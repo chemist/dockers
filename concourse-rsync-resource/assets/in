@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+
+DEST_DIR=$1
+echo $SRC_DIR 1>&2
+echo $BUILD_ID 1>&2
+echo $BUILD_NAME 1>&2
+echo $BUILD_JOB_NAME 1>&2
+echo $BUILD_PIPELINE_NAME 1>&2
+echo $ATC_EXTERNAL_URL 1>&2
+
+SCRIPT_INPUT='/tmp/input'
+cat > $SCRIPT_INPUT <&0 # STDIN params
+
+SERVER=$(jq -r '(.source.servers + [.source.server])[0]' < $SCRIPT_INPUT)
+BASE_DIR=$(jq -r '.source.base_dir // ""' < $SCRIPT_INPUT)
+VERSION=$(jq -r '.version.ref // ""' < $SCRIPT_INPUT)
+jq -re '.source.disable_version_path' < $SCRIPT_INPUT >/dev/null
+DISABLE_VERSION_PATH=$?
+
+echo $SCRIPT_INPUT 1>&2
+echo $SERVER    1>&2
+echo $BASE_DIR  1>&2
+echo $VERSION   1>&2
+
+if [ $DISABLE_VERSION_PATH -eq 0 ]
+then
+    SRC_DIR=$BASE_DIR
+else
+    SRC_DIR=$BASE_DIR/$VERSION
+fi
+
+echo $SRC_DIR 1>&2
+
+if [ -z "$VERSION" ]; then
+  echo "ERROR Version specifiation $VERSION invalid!"
+  exit 1
+else
+  RSYNC_CMD="rsync -av rsync://$SERVER/$SRC_DIR/* $DEST_DIR"
+  echo $RSYNC_CMD  1>&2
+  eval $RSYNC_CMD  1>&2
+  if [ $? -eq 0 ]; then
+    OUTPUT_STRING="{ \"version\": { \"ref\": \"$MD5_STRING\"} }"
+    echo $OUTPUT_STRING
+    exit 0
+  else
+    echo "Failed to rsync $SRC_DIR to $DEST_DIR" 1>&2
+    exit 1
+  fi
+fi

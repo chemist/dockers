@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+
+
+SCRIPT_INPUT='/tmp/input'
+cat > $SCRIPT_INPUT <&0 # STDIN params
+
+SERVER=$(jq -r '(.source.servers + [.source.server])[0]' < $SCRIPT_INPUT)
+PORT=$(jq -r '.source.port // ""' < $SCRIPT_INPUT)
+BASE_DIR=$(jq -r '.source.base_dir // ""' < $SCRIPT_INPUT)
+VERSION=$(jq -r '.version.ref // ""' < $SCRIPT_INPUT)
+jq -re '.source.disable_version_path' < $SCRIPT_INPUT >/dev/null
+DISABLE_VERSION_PATH=$?
+
+echo $SCRIPT_INPUT 1>&2
+echo $SERVER    1>&2
+echo $BASE_DIR  1>&2
+echo $VERSION  1>&2
+
+REFS=''
+if [ $DISABLE_VERSION_PATH -eq 0 ]
+then
+    if rsync rsync://$SERVER/$BASE_DIR
+    then
+        DIR=${BASE_DIR##*/}
+        echo $DIR 1>&2
+        REFS="{ \"ref\": \"$DIR\" }"
+    fi
+else
+    for DIR in $(rsync rsync://$SERVER/$BASE_DIR/ | awk '{ print $5 }') ; do
+      echo $DIR 1>&2
+      echo ${#REFS} 1>&2
+
+      NEW_REF="{ \"ref\": \"$DIR\" }"
+      if [ "${#REFS}" != "0" ]; then
+        NEW_REF="{ \"ref\": \"$DIR\" },"
+      fi
+
+      REFS=$NEW_REF$REFS # See the concat
+
+      if [ "$DIR" = "$VERSION" ]; then
+        break
+      fi
+    done
+fi
+
+OUTPUT_STRING="[ $REFS ]"
+echo $OUTPUT_STRING
+exit 0

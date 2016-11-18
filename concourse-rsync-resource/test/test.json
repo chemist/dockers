@@ -1,0 +1,8 @@
+{
+  "source": {
+    "server": "10.20.12.1",
+    "base_dir": "/sync/dir",
+    "user": "user",
+    "private_key": "fklsjdfkljsdlkfjsl"
+  }
+}
