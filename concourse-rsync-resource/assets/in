@@ -14,6 +14,7 @@ cat > $SCRIPT_INPUT <&0 # STDIN params
 SERVER=$(jq -r '(.source.servers + [.source.server])[0]' < $SCRIPT_INPUT)
 BASE_DIR=$(jq -r '.source.base_dir // ""' < $SCRIPT_INPUT)
 VERSION=$(jq -r '.version.ref // ""' < $SCRIPT_INPUT)
+SKIP=$(jq -r '.params.skip_download // ""' < $SCRIPT_INPUT)
 jq -re '.source.disable_version_path' < $SCRIPT_INPUT >/dev/null
 DISABLE_VERSION_PATH=$?
 
@@ -21,6 +22,20 @@ echo $SCRIPT_INPUT 1>&2
 echo $SERVER    1>&2
 echo $BASE_DIR  1>&2
 echo $VERSION   1>&2
+
+echo all params 1>&2
+echo $(cat $SCRIPT_INPUT) 1>&2
+
+if [ -z "$SKIP" ]
+then
+    echo skip disabled 1>&2
+else
+    echo skip enabled 1>&2
+    OUTPUT_STRING="{ \"version\": { \"ref\": \"none\"} }"
+    echo $OUTPUT_STRING
+    exit 0
+fi
+
 
 if [ $DISABLE_VERSION_PATH -eq 0 ]
 then
